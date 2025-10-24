@@ -13,6 +13,7 @@ import '../security/token_store.dart';
 import '../../features/auth/data/auth_api.dart';
 import '../../features/auth/data/auth_repository_impl.dart';
 import '../../features/auth/domain/auth_repository.dart';
+import '../../state/app_state.dart';
 
 /// Provides a single instance of [TokenStore].
 final tokenStoreProvider = Provider<TokenStore>((ref) => const TokenStore());
@@ -50,3 +51,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     tokenStore: ref.read(tokenStoreProvider),
   );
 });
+
+/// Application-wide state (tasks, connectivity) matching legacy behaviour.
+final appStateProvider = NotifierProvider<AppStateNotifier, AppState>(
+  AppStateNotifier.new,
+);

@@ -55,7 +55,7 @@ void main() {
         ),
       );
 
-      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
       expect(button.onPressed, isNull);
     });
 
@@ -73,11 +73,11 @@ void main() {
       );
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
+        find.widgetWithText(TextFormField, 'Usuario o Legajo'),
         'operator@example.com',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Contrasena'),
+        find.widgetWithText(TextFormField, 'PIN o Contraseña'),
         'wrong',
       );
 
@@ -117,20 +117,25 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(); // Allow initial build.
+      for (var i = 0; i < 5; i += 1) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
+        find.widgetWithText(TextFormField, 'Usuario o Legajo'),
         'operator@example.com',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Contrasena'),
+        find.widgetWithText(TextFormField, 'PIN o Contraseña'),
         'correct',
       );
 
       await tester.tap(find.text('Ingresar'));
-      await tester.pump();
-      await tester.pumpAndSettle();
+      await tester.pump(); // Trigger loading state.
+      for (var i = 0; i < 10; i += 1) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       expect(find.text('Pantalla de tareas'), findsOneWidget);
     });
