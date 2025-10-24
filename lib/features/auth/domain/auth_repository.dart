@@ -6,8 +6,11 @@
 
 /// Abstraction for auth; hides HTTP details from the app.
 abstract class AuthRepository {
-  /// Logs in with username+pin and persists tokens.
-  Future<bool> login({required String username, required String pin});
+  /// Inputs: [username] and [secret] non-empty.
+  /// Attempts login, persists tokens on success.
+  /// Outputs: true when tokens saved, false otherwise.
+  /// Side effects: secure storage writes.
+  Future<bool> login({required String username, required String secret});
 
   /// Clears local tokens and session.
   Future<void> logout();

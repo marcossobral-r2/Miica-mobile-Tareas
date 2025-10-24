@@ -37,8 +37,10 @@ final dioAuthProvider = Provider<Dio>((ref) {
 
 /// Low-level authentication API.
 final authApiProvider = Provider<AuthApi>((ref) {
-  final dio = ref.read(dioBaseProvider);
-  return AuthApi(dio);
+  return AuthApi(
+    unauthenticatedDio: ref.read(dioBaseProvider),
+    authenticatedDio: ref.read(dioAuthProvider),
+  );
 });
 
 /// Repository that coordinates authentication operations.

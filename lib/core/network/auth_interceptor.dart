@@ -7,6 +7,7 @@
 import 'package:dio/dio.dart';
 
 import '../security/token_store.dart';
+import '../../features/auth/data/auth_constants.dart';
 
 /// Injects Authorization header and tries refresh on 401 (if refresh token exists).
 class AuthInterceptor extends Interceptor {
@@ -21,7 +22,7 @@ class AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     final access = await tokenStore.readAccess();
-    if (access != null && access.isNotEmpty) {
+    if (access != null && access.isNotEmpty && _shouldAttachToken(options.path)) {
       options.headers['Authorization'] = 'Bearer $access';
     }
     super.onRequest(options, handler);
@@ -29,11 +30,13 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
+    if (err.response?.statusCode == 401 && _shouldAttemptRefresh(err.requestOptions.path)) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
-        final cloneRequest = await unauthenticatedDio.fetch(err.requestOptions);
-        return handler.resolve(cloneRequest);
+        final retried = await _retryWithNewAccess(err.requestOptions);
+        if (retried != null) {
+          return handler.resolve(retried);
+        }
       }
     }
     super.onError(err, handler);
@@ -47,11 +50,12 @@ class AuthInterceptor extends Interceptor {
 
     try {
       final response = await unauthenticatedDio.post(
-        '/api/v1/auth/refresh',
-        data: {'refresh_token': refresh},
+        AuthEndpoints.refresh,
+        data: {kAuthRefreshKey: refresh},
       );
-      final access = response.data['access_token'] as String?;
-      final newRefresh = response.data['refresh_token'] as String?;
+      final data = response.data as Map<String, dynamic>? ?? <String, dynamic>{};
+      final access = data[kAccessTokenKey] as String?;
+      final newRefresh = data[kRefreshTokenKey] as String?;
       if (access != null && access.isNotEmpty) {
         await tokenStore.saveTokens(access, refresh: newRefresh ?? refresh);
         return true;
@@ -59,6 +63,32 @@ class AuthInterceptor extends Interceptor {
     } catch (_) {
       // No refresh available or failed. Caller should handle logout.
     }
+    await tokenStore.clear();
     return false;
+  }
+
+  bool _shouldAttachToken(String path) {
+    return path != AuthEndpoints.login && path != AuthEndpoints.refresh;
+  }
+
+  bool _shouldAttemptRefresh(String path) => _shouldAttachToken(path);
+
+  Future<Response<dynamic>?> _retryWithNewAccess(RequestOptions options) async {
+    final access = await tokenStore.readAccess();
+    if (access == null || access.isEmpty) {
+      return null;
+    }
+
+    final newOptions = options.copyWith(
+      headers: Map<String, dynamic>.from(options.headers)
+        ..['Authorization'] = 'Bearer $access',
+    );
+
+    try {
+      return await unauthenticatedDio.fetch<dynamic>(newOptions);
+    } catch (_) {
+      await tokenStore.clear();
+      return null;
+    }
   }
 }

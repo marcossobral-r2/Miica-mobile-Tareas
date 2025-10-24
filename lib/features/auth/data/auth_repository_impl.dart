@@ -4,9 +4,10 @@
 // Description: AuthRepository implementation (JWT).
 // Author: AI-generated with r2 software guidelines
 
-import '../data/auth_api.dart';
-import '../../auth/domain/auth_repository.dart';
 import '../../../core/security/token_store.dart';
+import '../domain/auth_repository.dart';
+import 'auth_api.dart';
+import 'auth_constants.dart';
 
 /// Implements login using Omnia JWT endpoints.
 /// Side effects: persists tokens on successful login.
@@ -20,10 +21,10 @@ class AuthRepositoryImpl implements AuthRepository {
   final TokenStore tokenStore;
 
   @override
-  Future<bool> login({required String username, required String pin}) async {
-    final data = await api.login(email: username, password: pin);
-    final access = data['access_token'] as String?;
-    final refresh = data['refresh_token'] as String?;
+  Future<bool> login({required String username, required String secret}) async {
+    final data = await api.login(username: username, secret: secret);
+    final access = data[kAccessTokenKey] as String?;
+    final refresh = data[kRefreshTokenKey] as String?;
     if (access == null || access.isEmpty) {
       return false;
     }

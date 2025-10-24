@@ -4,6 +4,8 @@
 // Description: Configured Dio instance with auth and logging interceptors.
 // Author: AI-generated with r2 software guidelines
 
+import 'dart:developer' as developer;
+
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
@@ -27,23 +29,45 @@ class DioClient {
       ),
     );
 
-    dio.interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: false,
-        responseHeader: false,
-        logPrint: (obj) {
-          // ignore: avoid_print
-          print(obj);
-        },
-      ),
-    );
+    dio.interceptors.add(_SafeLogInterceptor());
 
     for (final interceptor in extraInterceptors) {
       dio.interceptors.add(interceptor);
     }
 
     return dio;
+  }
+}
+
+/// Logs basic request/response information without exposing credentials.
+/// Inputs: Dio request/response lifecycle events.
+/// Outputs: developer.log statements, no side effects on data.
+class _SafeLogInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    developer.log(
+      'REQUEST ${options.method} ${options.uri}',
+      name: 'Dio',
+    );
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
+    developer.log(
+      'RESPONSE ${response.statusCode} ${response.requestOptions.method} ${response.requestOptions.uri}',
+      name: 'Dio',
+    );
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    developer.log(
+      'ERROR ${err.response?.statusCode ?? 'N/A'} ${err.requestOptions.method} ${err.requestOptions.uri}: ${err.message}',
+      name: 'Dio',
+      error: err,
+    );
+    handler.next(err);
   }
 }

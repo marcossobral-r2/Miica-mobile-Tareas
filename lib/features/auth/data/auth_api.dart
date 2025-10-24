@@ -6,32 +6,44 @@
 
 import 'package:dio/dio.dart';
 
+import 'auth_constants.dart';
+
 /// Performs raw HTTP calls to Omnia auth endpoints.
 /// This layer knows endpoints and payloads; it does not manage tokens directly.
 class AuthApi {
-  AuthApi(this.dio);
+  AuthApi({
+    required Dio unauthenticatedDio,
+    required Dio authenticatedDio,
+  })  : _unauthenticatedDio = unauthenticatedDio,
+        _authenticatedDio = authenticatedDio;
 
-  final Dio dio;
+  final Dio _unauthenticatedDio;
+  final Dio _authenticatedDio;
 
-  /// Attempts login with username + pin.
-  /// Returns raw map with tokens and user info.
+  /// Inputs: [username] must not be null/empty, [secret] must not be null/empty.
+  /// Performs POST login request using Omnia credential keys.
+  /// Outputs: raw response map; throws [DioException] on HTTP failures.
+  /// Side effects: network request only.
   Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
+    required String username,
+    required String secret,
   }) async {
-    final response = await dio.post<Map<String, dynamic>>(
-      '/api/v1/auth/login',
+    final response = await _unauthenticatedDio.post<Map<String, dynamic>>(
+      AuthEndpoints.login,
       data: {
-        'email': email,
-        'password': password,
+        kAuthUserKey: username,
+        kAuthSecretKey: secret,
       },
     );
     return response.data ?? <String, dynamic>{};
   }
 
-  /// Optionally verify current identity (sanity check).
+  /// Inputs: none.
+  /// Performs authenticated GET to retrieve user info when available.
+  /// Outputs: raw map (possibly empty); throws [DioException] if unauthorized.
+  /// Side effects: network I/O only.
   Future<Map<String, dynamic>> me() async {
-    final response = await dio.get<Map<String, dynamic>>('/api/v1/me');
+    final response = await _authenticatedDio.get<Map<String, dynamic>>(AuthEndpoints.me);
     return response.data ?? <String, dynamic>{};
   }
 }
